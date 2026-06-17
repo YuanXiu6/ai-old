@@ -1,0 +1,1308 @@
+<!DOCTYPE html>
+<!-- saved from url=(0012)about:srcdoc -->
+<html lang="en"><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+				
+				<meta name="viewport" content="width=device-width, initial-scale=1.0">
+				<style>
+					body {
+						background-color: white; /* Ensure the iframe has a white background */
+					}
+				</style>
+				<script>
+					var Z_CDN_WHITELIST = [
+						'cdn.jsdelivr.net',
+						'cdnjs.cloudflare.com',
+						'cdn.tailwindcss.com',
+						'unpkg.com',
+						'fonts.googleapis.com',
+						'd3js.org',
+						'cdn.babylonjs.com',
+						'html2canvas.hertzen.com',
+						'code.jquery.com',
+						'cdn.datatables.net',
+						'kit.fontawesome.com',
+						'code.createjs.com',
+						'cdn.plot.ly',
+						'fonts.gstatic.com',
+						'www.rgraph.net',
+						'api.mapbox.com',
+						'polyfill.io',
+						'cdn.quilljs.com',
+						'picsum.photos',
+						'esm.sh'
+					];
+
+					function z_isUrlInWhitelist(url) {
+						if (!url || typeof url !== 'string') {
+							return false;
+						}
+						try {
+							const urlObj = new URL(url);
+							const hostname = urlObj.hostname;
+							return Z_CDN_WHITELIST.some(domain => hostname === domain);
+						} catch (e) {
+							return false;
+						}
+					}
+
+						function z_proxyCdnUrl(url) {
+						if (!url || !url.startsWith('http')) {
+							return url;
+						}
+							if (!z_isUrlInWhitelist(url)) {
+							return url;
+						}
+						if (!url.startsWith('https://artifacts-cdn.chatglm.site/')) {
+							return 'https://artifacts-cdn.chatglm.site/' + url;
+						}
+						return url;
+					}
+					
+					// 增强版外部链接拦截 - 适合放在模板字符串中
+					document.addEventListener('click', function (ev) {
+						try {
+							const anchor = ev.target?.closest?.('a[href]') || null;
+							if (!anchor) return;
+
+							let href = anchor.getAttribute('href')?.trim() || '';
+							if (!href) return;
+
+							if (href.startsWith('javascript:')) return;
+
+							// 新需求：href="#" 的链接完全阻止跳转和任何行为
+							if (href === '#') {
+								ev.preventDefault();
+								return;
+							}
+
+							// 处理其他内部锚点（如 #about、#contact 等）
+							if (href.startsWith('#')) {
+								const rawId = href.slice(1);
+								if (!rawId) return;
+
+								const id = decodeURIComponent(rawId);
+								const target = 
+									document.getElementById(id) ||
+									document.querySelector('a[name="' + id.replace(/"/g, '\"') + '"]') ||
+									document.querySelector('[name="' + id.replace(/"/g, '\"') + '"]');
+
+								if (target && target.scrollIntoView) {
+									ev.preventDefault();
+									try {
+										history.pushState(null, '', href);
+									} catch (e) {}
+									target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+								}
+								return;
+							}
+
+							// 处理外部链接
+							let url;
+							try {
+								url = new URL(href, window.location.href);
+							} catch (e) {
+								return;
+							}
+
+							if (url.protocol !== 'http:' && url.protocol !== 'https:') return;
+
+							const isExternal = url.hostname !== window.location.hostname;
+
+							if (isExternal || anchor.getAttribute('target') === '_blank') {
+								ev.preventDefault();
+								window.open(url.toString(), '_blank', 'noopener,noreferrer');
+							}
+
+						} catch (e) {
+							// 出错时不阻止默认行为
+						}
+					}, true);
+
+					// 1. 暴力清除函数：从 DOM 层面抹除 onclick 属性
+					var Z_removeInlineOnclick = function () {
+						// 专门锁定 href="#" 且带有 onclick 的 a 标签
+						const targetedLinks = document.querySelectorAll('a[href="#"][onclick]');
+						for (let i = 0; i < targetedLinks.length; i++) {
+							targetedLinks[i].removeAttribute('onclick');
+							targetedLinks[i].onclick = null; // 确保 JS 层的赋值也被清理
+						}
+					};
+					// 3. 动态监测：防止页面通过异步加载重新生成带 onclick 的元素
+					var z_observer = new MutationObserver(function () {
+						Z_removeInlineOnclick();
+					});
+
+					z_observer.observe(document.documentElement, {
+						childList: true,
+						subtree: true,
+						attributes: true,
+						attributeFilter: ['onclick']
+					});
+
+					// 4. 初始化执行一次
+					Z_removeInlineOnclick();
+
+					const Z_rawCreateElement = document.createElement;
+
+					document.createElement = function (tagName, ...args) {
+						const el = Z_rawCreateElement.call(this, tagName, ...args);
+
+						if (tagName.toLowerCase() === 'script') {
+							const rawSetAttribute = el.setAttribute;
+							const rawGetAttribute = el.getAttribute;
+							let srcValue = '';
+							
+							el.setAttribute = function (name, value) {
+								if (name === 'src' && typeof value === 'string') {
+									value = z_proxyCdnUrl(value);
+									srcValue = value;
+								}
+								return rawSetAttribute.call(this, name, value);
+							};
+
+							Object.defineProperty(el, 'src', {
+								get: function() {
+									return srcValue || rawGetAttribute.call(this, 'src') || '';
+								},
+								set: function(value) {
+									if (typeof value === 'string') {
+										srcValue = z_proxyCdnUrl(value);
+										rawSetAttribute.call(this, 'src', srcValue);
+									} else {
+										srcValue = value;
+									}
+								},
+								configurable: true,
+								enumerable: true
+							});
+						}
+
+						if (tagName.toLowerCase() === 'link') {
+							const rawSetAttribute = el.setAttribute;
+							const rawGetAttribute = el.getAttribute;
+							let hrefValue = '';
+							
+							el.setAttribute = function (name, value) {
+								if (name === 'href' && typeof value === 'string') {
+									value = z_proxyCdnUrl(value);
+									hrefValue = value;
+								}
+								return rawSetAttribute.call(this, name, value);
+							};
+
+							Object.defineProperty(el, 'href', {
+								get: function() {
+									return hrefValue || rawGetAttribute.call(this, 'href') || '';
+								},
+								set: function(value) {
+									if (typeof value === 'string') {
+										hrefValue = z_proxyCdnUrl(value);
+										rawSetAttribute.call(this, 'href', hrefValue);
+									} else {
+										hrefValue = value;
+									}
+								},
+								configurable: true,
+								enumerable: true
+							});
+						}
+
+						return el;
+					};
+
+					const Z_OriginalXMLHttpRequest = window.XMLHttpRequest;
+					window.XMLHttpRequest = function (...args) {
+						const xhr = new Z_OriginalXMLHttpRequest(...args);
+						const rawOpen = xhr.open;
+
+						xhr.open = function (method, url, ...rest) {
+							if (typeof url === 'string') {
+								const methodUpper = (method || '').toUpperCase();
+								if (methodUpper === 'GET' && z_isUrlInWhitelist(url)) {
+									url = z_proxyCdnUrl(url);
+								}
+							}
+							return rawOpen.call(this, method, url, ...rest);
+						};
+
+						return xhr;
+					};
+
+					window.XMLHttpRequest.prototype = Z_OriginalXMLHttpRequest.prototype;
+					Object.setPrototypeOf(window.XMLHttpRequest, Z_OriginalXMLHttpRequest);
+
+					const z_originalFetch = window.fetch;
+					window.fetch = async function (...args) {
+						if (args.length > 0) {
+							let url = '';
+							let method = 'GET';
+							
+							if (typeof args[0] === 'string') {
+								url = args[0];
+								if (args[1] && args[1].method) {
+									method = args[1].method.toUpperCase();
+								}
+								if (method === 'GET' && z_isUrlInWhitelist(url)) {
+									args[0] = z_proxyCdnUrl(url);
+								}
+							} else if (args[0] instanceof Request) {
+								const originalUrl = args[0].url;
+								method = (args[0].method || 'GET').toUpperCase();
+								if (method === 'GET' && z_isUrlInWhitelist(originalUrl)) {
+									const proxiedUrl = z_proxyCdnUrl(originalUrl);
+									if (proxiedUrl !== originalUrl) {
+										args[0] = new Request(proxiedUrl, args[0]);
+									}
+								}
+							}
+						}
+						return z_originalFetch.apply(this, args);
+					};
+				</script>
+			</head>
+			<body>
+				
+    
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes">
+    <title>智伴夕阳 - 老年专属智能陪伴终端</title>
+    <style>
+        /* ==================== 
+           全局变量与基础设置 
+           ==================== */
+        :root {
+            --primary-color: #2E8B57; /* 护眼绿 */
+            --accent-color: #FF7F50;  /* 温暖橙，用于强调 */
+            --bg-color: #FDFCF8;      /* 柔和米白 */
+            --card-bg: #FFFFFF;
+            --text-main: #333333;     /* 深灰，高对比度 */
+            --text-sub: #666666;
+            --danger-color: #D9534F;
+            --safe-color: #5CB85C;
+            --nav-height: 80px;
+            --header-height: 70px;
+            --border-radius: 16px;
+            --font-scale: 1; /* 字体缩放系数 */
+            --shadow: 0 4px 12px rgba(0,0,0,0.08);
+            --transition: all 0.3s ease;
+        }
+
+        /* 护眼模式变量覆盖 */
+        body.eye-protection {
+            --bg-color: #F4ECD8;
+            --text-main: #5A4A42;
+            --card-bg: #FAF3E0;
+            --primary-color: #8FBC8F;
+        }
+
+        * {
+            box-sizing: border-box;
+            outline: none;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: "Microsoft YaHei", "Heiti SC", sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            transition: background-color 0.5s ease;
+        }
+
+        /* 字体大小控制基础 */
+        html {
+            font-size: 18px; /* 默认大字体 */
+        }
+        
+        /* 放大模式 */
+        body.large-font {
+            font-size: 22px;
+        }
+
+        /* ==================== 
+           UI 组件：通用 
+           ==================== */
+        .btn {
+            background-color: var(--primary-color);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            font-size: 1.1rem;
+            border-radius: 12px;
+            cursor: pointer;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            transition: var(--transition);
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+        .btn:active {
+            transform: scale(0.95);
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .btn-accent {
+            background-color: var(--accent-color);
+        }
+        .btn-large {
+            width: 100%;
+            padding: 20px;
+            font-size: 1.4rem;
+            font-weight: bold;
+        }
+        .btn-danger {
+            background-color: var(--danger-color);
+        }
+
+        .card {
+            background-color: var(--card-bg);
+            border-radius: var(--border-radius);
+            padding: 20px;
+            box-shadow: var(--shadow);
+            margin-bottom: 20px;
+        }
+
+        /* 隐藏滚动条但保留功能 */
+        .scroll-container::-webkit-scrollbar {
+            width: 8px;
+        }
+        .scroll-container::-webkit-scrollbar-thumb {
+            background-color: #ccc;
+            border-radius: 4px;
+        }
+
+        /* ==================== 
+           顶部栏 
+           ==================== */
+        header {
+            height: var(--header-height);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0 20px;
+            background-color: var(--card-bg);
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+            z-index: 100;
+            flex-shrink: 0;
+        }
+        .header-title {
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: var(--primary-color);
+        }
+        .header-info {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            font-size: 1rem;
+            color: var(--text-sub);
+        }
+        .settings-btn {
+            font-size: 1.5rem;
+            cursor: pointer;
+            padding: 5px;
+        }
+
+        /* ==================== 
+           主内容区域 
+           ==================== */
+        main {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px;
+            position: relative;
+        }
+
+        .page-section {
+            display: none; /* 默认隐藏 */
+            animation: fadeIn 0.4s ease-out;
+            padding-bottom: 40px;
+        }
+        .page-section.active {
+            display: block;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* --- 首页 --- */
+        .greeting {
+            font-size: 1.8rem;
+            margin-bottom: 30px;
+            color: var(--text-main);
+        }
+        .weather-widget {
+            background: linear-gradient(135deg, #87CEEB, #4682B4);
+            color: white;
+            padding: 20px;
+            border-radius: var(--border-radius);
+            margin-bottom: 30px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .weather-temp { font-size: 2.5rem; font-weight: bold; }
+        .weather-desc { font-size: 1.2rem; }
+
+        .grid-menu {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+        .menu-item {
+            background-color: var(--card-bg);
+            padding: 30px 10px;
+            border-radius: var(--border-radius);
+            box-shadow: var(--shadow);
+            text-align: center;
+            cursor: pointer;
+            border: 2px solid transparent;
+            transition: var(--transition);
+        }
+        .menu-item:active {
+            border-color: var(--primary-color);
+            background-color: #f0fff4;
+        }
+        .menu-icon {
+            font-size: 4rem;
+            margin-bottom: 15px;
+            display: block;
+        }
+        .menu-text {
+            font-size: 1.4rem;
+            font-weight: bold;
+            color: var(--text-main);
+        }
+
+        /* --- AI 对话 --- */
+        #chat-window {
+            height: calc(100vh - 250px);
+            overflow-y: auto;
+            background-color: #f0f2f5;
+            border-radius: var(--border-radius);
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+        .message {
+            max-width: 80%;
+            padding: 15px 20px;
+            border-radius: 20px;
+            font-size: 1.2rem;
+            line-height: 1.5;
+            position: relative;
+        }
+        .message.ai {
+            align-self: flex-start;
+            background-color: white;
+            color: var(--text-main);
+            border-bottom-left-radius: 5px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        }
+        .message.user {
+            align-self: flex-end;
+            background-color: var(--primary-color);
+            color: white;
+            border-bottom-right-radius: 5px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .chat-controls {
+            display: flex;
+            gap: 15px;
+        }
+        #voice-input-btn {
+            flex: 2;
+            height: 70px;
+            border-radius: 35px;
+            font-size: 1.3rem;
+            background-color: var(--primary-color);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+        }
+        .mic-icon {
+            width: 30px;
+            height: 30px;
+            fill: white;
+        }
+        .listening-anim {
+            animation: pulse 1.5s infinite;
+            background-color: var(--danger-color);
+        }
+        @keyframes pulse {
+            0% { box-shadow: 0 0 0 0 rgba(217, 83, 79, 0.7); }
+            70% { box-shadow: 0 0 0 15px rgba(217, 83, 79, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(217, 83, 79, 0); }
+        }
+
+        /* --- 健康监测 --- */
+        .health-form {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            margin-bottom: 30px;
+        }
+        .input-group {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        .input-group label {
+            font-size: 1.1rem;
+            color: var(--text-sub);
+        }
+        .input-group input, .input-group select {
+            padding: 15px;
+            border: 2px solid #ddd;
+            border-radius: 10px;
+            font-size: 1.2rem;
+            background-color: var(--card-bg);
+        }
+        .health-status {
+            text-align: center;
+            padding: 20px;
+            margin-bottom: 20px;
+            border-radius: 12px;
+            font-size: 1.3rem;
+            font-weight: bold;
+        }
+        .status-good { background-color: #e8f5e9; color: var(--safe-color); }
+        .status-warn { background-color: #fff3e0; color: #ff9800; }
+        .status-bad { background-color: #ffebee; color: var(--danger-color); }
+
+        .chart-container {
+            height: 200px;
+            display: flex;
+            align-items: flex-end;
+            justify-content: space-around;
+            padding-top: 20px;
+            border-bottom: 2px solid #eee;
+        }
+        .bar-group {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            width: 15%;
+        }
+        .bar {
+            width: 100%;
+            background-color: var(--primary-color);
+            border-radius: 5px 5px 0 0;
+            transition: height 1s ease;
+        }
+        .bar-label {
+            margin-top: 5px;
+            font-size: 0.9rem;
+            color: var(--text-sub);
+        }
+
+        /* --- 文旅推送 --- */
+        .filter-bar {
+            display: flex;
+            gap: 10px;
+            overflow-x: auto;
+            padding-bottom: 15px;
+            margin-bottom: 10px;
+        }
+        .filter-chip {
+            padding: 10px 20px;
+            background-color: #eee;
+            border-radius: 20px;
+            white-space: nowrap;
+            font-size: 1.1rem;
+            cursor: pointer;
+        }
+        .filter-chip.active {
+            background-color: var(--primary-color);
+            color: white;
+        }
+        .tour-card {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            margin-bottom: 25px;
+        }
+        .tour-img {
+            width: 100%;
+            height: 200px;
+            object-fit: cover;
+            border-radius: 12px;
+            background-color: #ddd;
+        }
+        .tour-info h3 { margin: 0; font-size: 1.4rem; }
+        .tour-tags { display: flex; gap: 10px; margin: 5px 0; }
+        .tag { font-size: 0.9rem; padding: 2px 8px; background: #e0f2f1; color: #00695c; border-radius: 4px; }
+        .tour-desc { color: var(--text-sub); font-size: 1.1rem; line-height: 1.4; }
+
+        /* --- 智能导航 --- */
+        .nav-map-placeholder {
+            width: 100%;
+            height: 300px;
+            background-color: #e8eaf6;
+            border-radius: var(--border-radius);
+            margin-bottom: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            overflow: hidden;
+        }
+        .nav-arrow {
+            font-size: 5rem;
+            color: var(--primary-color);
+            margin-bottom: 10px;
+        }
+        .nav-instruction {
+            font-size: 2rem;
+            font-weight: bold;
+            color: var(--text-main);
+            text-align: center;
+            padding: 0 20px;
+        }
+        .favorite-places {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+            gap: 15px;
+        }
+        .fav-item {
+            background: white;
+            padding: 20px 10px;
+            border-radius: 12px;
+            text-align: center;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.05);
+            cursor: pointer;
+        }
+        .fav-icon { font-size: 2rem; display: block; margin-bottom: 5px; }
+
+        /* ==================== 
+           底部导航 
+           ==================== */
+        .bottom-nav {
+            height: var(--nav-height);
+            background-color: white;
+            display: flex;
+            justify-content: space-around;
+            align-items: center;
+            box-shadow: 0 -2px 10px rgba(0,0,0,0.05);
+            z-index: 100;
+            flex-shrink: 0;
+        }
+        .nav-item {
+            flex: 1;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            color: #999;
+            cursor: pointer;
+            font-size: 1rem;
+            transition: color 0.2s;
+        }
+        .nav-item.active {
+            color: var(--primary-color);
+        }
+        .nav-icon {
+            font-size: 1.8rem;
+            margin-bottom: 4px;
+        }
+
+        /* ==================== 
+           模态框与Toast 
+           ==================== */
+        .toast {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background-color: rgba(0,0,0,0.8);
+            color: white;
+            padding: 20px 40px;
+            border-radius: 12px;
+            font-size: 1.3rem;
+            z-index: 2000;
+            display: none;
+            text-align: center;
+        }
+        
+        .modal-overlay {
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background-color: rgba(0,0,0,0.5);
+            z-index: 1000;
+            display: none;
+            align-items: center;
+            justify-content: center;
+        }
+        .modal {
+            background-color: var(--card-bg);
+            padding: 30px;
+            border-radius: var(--border-radius);
+            width: 90%;
+            max-width: 500px;
+            text-align: center;
+        }
+        .setting-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 15px 0;
+            border-bottom: 1px solid #eee;
+        }
+        /* 简单的 Toggle 开关 */
+        .toggle-switch {
+            position: relative;
+            display: inline-block;
+            width: 60px;
+            height: 34px;
+        }
+        .toggle-switch input { opacity: 0; width: 0; height: 0; }
+        .slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background-color: #ccc;
+            transition: .4s;
+            border-radius: 34px;
+        }
+        .slider:before {
+            position: absolute;
+            content: "";
+            height: 26px;
+            width: 26px;
+            left: 4px;
+            bottom: 4px;
+            background-color: white;
+            transition: .4s;
+            border-radius: 50%;
+        }
+        input:checked + .slider { background-color: var(--primary-color); }
+        input:checked + .slider:before { transform: translateX(26px); }
+
+    </style>
+
+
+
+    <!-- 顶部栏 -->
+    <header>
+        <div class="header-title">智伴夕阳</div>
+        <div class="header-info">
+            <span id="current-time">09:00</span>
+            <span style="cursor: pointer;" onclick="openSettings()">⚙️</span>
+        </div>
+    </header>
+
+    <!-- 主体内容 -->
+    <main class="scroll-container">
+        
+        <!-- 1. 首页 / 综合服务 -->
+        <section id="page-home" class="page-section active">
+            <div class="greeting">
+                您好，<span id="user-name">李大爷</span>！<br>
+                <span style="font-size: 1.2rem; color: var(--text-sub);">今天感觉怎么样？</span>
+            </div>
+
+            <div class="weather-widget" id="weather-card">
+                <div>
+                    <div class="weather-temp">26°</div>
+                    <div class="weather-desc">多云转晴</div>
+                </div>
+                <div>
+                    <div style="font-size: 1.2rem;">适宜散步</div>
+                    <div style="font-size: 0.9rem;">注意防晒</div>
+                </div>
+            </div>
+
+            <div class="grid-menu">
+                <div class="menu-item" onclick="switchTab(&#39;chat&#39;)">
+                    <span class="menu-icon">🤖</span>
+                    <div class="menu-text">AI 陪聊</div>
+                </div>
+                <div class="menu-item" onclick="switchTab(&#39;health&#39;)">
+                    <span class="menu-icon">❤️</span>
+                    <div class="menu-text">健康监测</div>
+                </div>
+                <div class="menu-item" onclick="switchTab(&#39;tourism&#39;)">
+                    <span class="menu-icon">🌳</span>
+                    <div class="menu-text">周边游玩</div>
+                </div>
+                <div class="menu-item" onclick="switchTab(&#39;nav&#39;)">
+                    <span class="menu-icon">🧭</span>
+                    <div class="menu-text">一键导航</div>
+                </div>
+            </div>
+
+            <div class="card" style="margin-top: 30px;">
+                <h3>📅 今日提醒</h3>
+                <div style="margin-top: 15px; font-size: 1.1rem;">
+                    <p>⏰ 08:00 服用降压药</p>
+                    <p>📅 10:30 社区健康讲座</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- 2. AI 智能对话 -->
+        <section id="page-chat" class="page-section">
+            <div id="chat-window">
+                <div class="message ai">李大爷，您好呀！我是您的贴心小伴。今天心情怎么样？有什么想聊的，或者有什么不懂的，尽管问我。</div>
+            </div>
+            <div class="chat-controls">
+                <button id="voice-input-btn" class="btn" onclick="toggleVoiceInput()">
+                    <svg class="mic-icon" viewBox="0 0 24 24">
+                        <path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.66 9 5v6c0 1.66 1.34 3 3 3z"></path>
+                        <path d="M17 11c0 2.76-2.24 5-5 5s-5-2.24-5-5H5c0 3.53 2.61 6.43 6 6.92V21h2v-3.08c3.39-.49 6-3.39 6-6.92h-2z"></path>
+                    </svg>
+                    <span id="voice-btn-text">按住 说话</span>
+                </button>
+            </div>
+        </section>
+
+        <!-- 3. 健康监测 -->
+        <section id="page-health" class="page-section">
+            <div class="card">
+                <h3>📝 今日数据录入</h3>
+                <div class="health-form">
+                    <div class="input-group">
+                        <label>收缩压 (高压)</label>
+                        <input type="number" id="bp-high" placeholder="如: 130">
+                    </div>
+                    <div class="input-group">
+                        <label>舒张压 (低压)</label>
+                        <input type="number" id="bp-low" placeholder="如: 80">
+                    </div>
+                    <div class="input-group">
+                        <label>心率 (次/分)</label>
+                        <input type="number" id="heart-rate" placeholder="如: 75">
+                    </div>
+                    <div class="input-group">
+                        <label>身体感觉</label>
+                        <select id="symptom">
+                            <option value="good">一切正常</option>
+                            <option value="dizzy">有点头晕</option>
+                            <option value="tired">感觉乏力</option>
+                            <option value="pain">身体疼痛</option>
+                        </select>
+                    </div>
+                </div>
+                <button class="btn btn-large" onclick="submitHealth()">一键上传 &amp; 获取分析</button>
+            </div>
+
+            <div id="health-result" class="health-status" style="display: none;">
+                <!-- 动态填充 -->
+            </div>
+
+            <div class="card">
+                <h3>📊 近7天血压趋势</h3>
+                <div class="chart-container" id="bp-chart">
+                    <!-- 动态生成柱状图 -->
+                    <div class="bar-group"><div class="bar" style="height: 60%;"></div><div class="bar-label">周一</div></div>
+                    <div class="bar-group"><div class="bar" style="height: 65%;"></div><div class="bar-label">周二</div></div>
+                    <div class="bar-group"><div class="bar" style="height: 62%;"></div><div class="bar-label">周三</div></div>
+                    <div class="bar-group"><div class="bar" style="height: 70%;"></div><div class="bar-label">周四</div></div>
+                    <div class="bar-group"><div class="bar" style="height: 66%;"></div><div class="bar-label">周五</div></div>
+                    <div class="bar-group"><div class="bar" style="height: 63%;"></div><div class="bar-label">周六</div></div>
+                    <div class="bar-group"><div class="bar" style="height: 0%; background:#ddd;"></div><div class="bar-label">今天</div></div>
+                </div>
+                <p style="text-align: center; color: #999; margin-top: 10px;">绿色为正常，偏高会变橙/红</p>
+            </div>
+        </section>
+
+        <!-- 4. 文旅推送 -->
+        <section id="page-tourism" class="page-section">
+            <div class="filter-bar">
+                <div class="filter-chip active" onclick="filterTourism(&#39;all&#39;, this)">全部推荐</div>
+                <div class="filter-chip" onclick="filterTourism(&#39;park&#39;, this)">公园散步</div>
+                <div class="filter-chip" onclick="filterTourism(&#39;culture&#39;, this)">文化馆</div>
+                <div class="filter-chip" onclick="filterTourism(&#39;market&#39;, this)">集市/超市</div>
+            </div>
+
+            <div id="tourism-list">
+                <!-- 动态生成内容 -->
+            </div>
+        </section>
+
+        <!-- 5. 智能导航 -->
+        <section id="page-nav" class="page-section">
+            <div class="nav-map-placeholder">
+                <div id="nav-icon" class="nav-arrow">⬆️</div>
+                <div id="nav-text" class="nav-instruction">准备出发...</div>
+            </div>
+            
+            <div class="card">
+                <h3>📍 常用地址 (一键直达)</h3>
+                <div class="favorite-places">
+                    <div class="fav-item" onclick="startNav(&#39;回家&#39;, &#39;前方路口右转，直行500米&#39;)">
+                        <span class="fav-icon">🏠</span>
+                        <span>回家</span>
+                    </div>
+                    <div class="fav-item" onclick="startNav(&#39;市医院&#39;, &#39;沿主路直行，第三个红绿灯左转&#39;)">
+                        <span class="fav-icon">🏥</span>
+                        <span>医院</span>
+                    </div>
+                    <div class="fav-item" onclick="startNav(&#39;中心公园&#39;, &#39;左转进入和平路，步行10分钟&#39;)">
+                        <span class="fav-icon">🌲</span>
+                        <span>公园</span>
+                    </div>
+                    <div class="fav-item" onclick="startNav(&#39;菜市场&#39;, &#39;后方掉头，步行200米到达&#39;)">
+                        <span class="fav-icon">🥬</span>
+                        <span>菜市场</span>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- 底部导航栏 -->
+    <nav class="bottom-nav">
+        <div class="nav-item active" onclick="switchTab(&#39;home&#39;)" id="nav-home">
+            <span class="nav-icon">🏠</span>
+            <span>首页</span>
+        </div>
+        <div class="nav-item" onclick="switchTab(&#39;chat&#39;)" id="nav-chat">
+            <span class="nav-icon">💬</span>
+            <span>陪聊</span>
+        </div>
+        <div class="nav-item" onclick="switchTab(&#39;health&#39;)" id="nav-health">
+            <span class="nav-icon">❤️</span>
+            <span>健康</span>
+        </div>
+        <div class="nav-item" onclick="switchTab(&#39;tourism&#39;)" id="nav-tourism">
+            <span class="nav-icon">🏞️</span>
+            <span>游玩</span>
+        </div>
+    </nav>
+
+    <!-- 设置弹窗 -->
+    <div class="modal-overlay" id="settings-modal">
+        <div class="modal">
+            <h2>⚙️ 设置中心</h2>
+            
+            <div class="setting-row">
+                <span>🔊 语音播报</span>
+                <label class="toggle-switch">
+                    <input type="checkbox" checked="" id="setting-tts">
+                    <span class="slider"></span>
+                </label>
+            </div>
+            
+            <div class="setting-row">
+                <span>🔡 超大字体</span>
+                <label class="toggle-switch">
+                    <input type="checkbox" id="setting-font" onchange="toggleFontSize()">
+                    <span class="slider"></span>
+                </label>
+            </div>
+
+            <div class="setting-row">
+                <span>👀 护眼模式</span>
+                <label class="toggle-switch">
+                    <input type="checkbox" id="setting-eye" onchange="toggleEyeMode()">
+                    <span class="slider"></span>
+                </label>
+            </div>
+
+            <div class="setting-row">
+                <span>🧹 清除聊天记录</span>
+                <button class="btn" style="padding: 5px 10px; font-size: 0.9rem;" onclick="clearHistory()">清除</button>
+            </div>
+
+            <button class="btn btn-large" style="margin-top: 20px; background-color: #ccc; color: #333;" onclick="closeSettings()">关闭设置</button>
+        </div>
+    </div>
+
+    <!-- Toast 提示 -->
+    <div id="toast" class="toast">提示信息</div>
+
+    <script>
+        // ====================
+        // 核心逻辑与状态管理
+        // ====================
+
+        // 模拟数据
+        const mockTourismData = [
+            { id: 1, type: 'park', title: '阳光湿地公园', tags: ['免费', '平缓', '近'], img: '200/200', desc: '离家仅1公里，路况平坦，适合晨练和散步，有老年健身区。' },
+            { id: 2, type: 'culture', title: '市老年非遗展览馆', tags: ['有空调', '免费'], img: '201/200', desc: '今日有剪纸展览，环境安静舒适，提供免费茶水。' },
+            { id: 3, type: 'market', title: '东门便民集市', tags: ['便宜', '热闹'], img: '202/200', desc: '新鲜蔬菜水果，价格实惠，早上8点前人少，推荐前往。' },
+            { id: 4, type: 'park', title: '滨河绿化带', tags: ['风景好', '长椅多'], img: '203/200', desc: '沿河而建，风景优美，长椅很多，走累了可以随时休息。' }
+        ];
+
+        let isListening = false;
+        let synth = window.speechSynthesis; // 语音合成
+
+        // 初始化
+        window.onload = function() {
+            updateTime();
+            setInterval(updateTime, 60000);
+            renderTourism('all');
+        };
+
+        // 更新时间
+        function updateTime() {
+            const now = new Date();
+            const hours = String(now.getHours()).padStart(2, '0');
+            const minutes = String(now.getMinutes()).padStart(2, '0');
+            document.getElementById('current-time').textContent = `${hours}:${minutes}`;
+        }
+
+        // 页面切换
+        function switchTab(tabId) {
+            // 隐藏所有页面
+            document.querySelectorAll('.page-section').forEach(el => el.classList.remove('active'));
+            // 显示目标页面
+            document.getElementById(`page-${tabId}`).classList.add('active');
+            
+            // 更新底部导航状态
+            document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
+            const navItem = document.getElementById(`nav-${tabId}`);
+            if(navItem) navItem.classList.add('active');
+
+            // 特殊处理：如果切换到聊天页，滚动到底部
+            if(tabId === 'chat') {
+                const chatWin = document.getElementById('chat-window');
+                chatWin.scrollTop = chatWin.scrollHeight;
+            }
+        }
+
+        // 显示 Toast 提示
+        function showToast(msg) {
+            const toast = document.getElementById('toast');
+            toast.textContent = msg;
+            toast.style.display = 'block';
+            setTimeout(() => {
+                toast.style.display = 'none';
+            }, 3000);
+        }
+
+        // ====================
+        // 功能 1: AI 对话系统
+        // ====================
+        
+        function toggleVoiceInput() {
+            const btn = document.getElementById('voice-input-btn');
+            const btnText = document.getElementById('voice-btn-text');
+
+            if (!isListening) {
+                // 开始模拟录音
+                isListening = true;
+                btn.classList.add('listening-anim');
+                btnText.textContent = "正在聆听...";
+                
+                // 模拟 2秒后说话结束
+                setTimeout(() => {
+                    finishVoiceInput();
+                }, 2000);
+            } else {
+                // 手动结束
+                finishVoiceInput();
+            }
+        }
+
+        function finishVoiceInput() {
+            isListening = false;
+            const btn = document.getElementById('voice-input-btn');
+            const btnText = document.getElementById('voice-btn-text');
+            btn.classList.remove('listening-anim');
+            btnText.textContent = "按住 说话";
+
+            // 模拟识别结果（随机）
+            const inputs = ["今天天气不错", "我想去公园走走", "头有点晕怎么办", "谢谢你陪我聊天", "今天吃什么"];
+            const randomInput = inputs[Math.floor(Math.random() * inputs.length)];
+            
+            addMessage(randomInput, 'user');
+            
+            // 模拟 AI 思考回复
+            setTimeout(() => {
+                const response = getAIResponse(randomInput);
+                addMessage(response, 'ai');
+                speak(response);
+            }, 1000);
+        }
+
+        function addMessage(text, type) {
+            const chatWin = document.getElementById('chat-window');
+            const div = document.createElement('div');
+            div.className = `message ${type}`;
+            div.textContent = text;
+            chatWin.appendChild(div);
+            chatWin.scrollTop = chatWin.scrollHeight;
+        }
+
+        function getAIResponse(input) {
+            input = input.toLowerCase();
+            if (input.includes("头晕")) return "李大爷，头晕可能是血压有点波动。建议您先坐下来休息一会儿，喝点温水。如果感觉不舒服，要不要我帮您联系孩子或者去医院？";
+            if (input.includes("公园") || input.includes("走走")) return "好主意！最近的'阳光湿地公园'环境很不错，适合散步。需要我为您导航过去吗？";
+            if (input.includes("谢谢")) return "不客气，能陪您聊天我也很开心。有什么事随时叫我！";
+            if (input.includes("吃")) return "到了饭点了呀。今天天气好，建议吃点清淡的，比如清蒸鱼和炒时蔬，对肠胃好。";
+            return "嗯嗯，我在听呢。还有其他想告诉我的吗？或者是身体哪里不舒服？";
+        }
+
+        function speak(text) {
+            const useTTS = document.getElementById('setting-tts').checked;
+            if (!useTTS) return;
+
+            // 取消之前的播报
+            if(synth.speaking) synth.cancel();
+
+            const utterance = new SpeechSynthesisUtterance(text);
+            utterance.lang = 'zh-CN';
+            utterance.rate = 0.8; // 语速稍慢
+            utterance.pitch = 1;
+            synth.speak(utterance);
+        }
+
+        function clearHistory() {
+            const chatWin = document.getElementById('chat-window');
+            chatWin.innerHTML = '<div class="message ai">记录已清空。李大爷，咱们重新开始聊吧。</div>';
+            closeSettings();
+        }
+
+        // ====================
+        // 功能 2: 健康监测系统
+        // ====================
+
+        function submitHealth() {
+            const high = document.getElementById('bp-high').value;
+            const low = document.getElementById('bp-low').value;
+            const symptom = document.getElementById('symptom').value;
+
+            if (!high || !low) {
+                showToast("请您输入血压数值哦");
+                return;
+            }
+
+            // 简单逻辑判断
+            const resultDiv = document.getElementById('health-result');
+            resultDiv.style.display = 'block';
+            
+            let statusText = "";
+            let statusClass = "";
+            let advice = "";
+
+            if (high > 140 || low > 90 || symptom !== 'good') {
+                statusClass = "status-warn";
+                if(symptom === 'dizzy' || high > 160) {
+                    statusClass = "status-bad";
+                    statusText = "⚠️ 身体状况异常";
+                    advice = "建议您卧床休息，并测量第二次。如果持续不适，请立即按下方红色按钮联系家属或就医。";
+                    speak("李大爷，检测到数据有些异常，请不要紧张，先坐下休息，必要时联系家人。");
+                } else {
+                    statusText = "⚠️ 需要注意";
+                    advice = "血压稍微有点高，注意清淡饮食，保持心情愉快。如有不适请及时就医。";
+                    speak("李大爷，您的数据稍微有点偏高，平时记得少盐多运动哦。");
+                }
+            } else {
+                statusClass = "status-good";
+                statusText = "✅ 身体状况良好";
+                advice = "您的身体很硬朗！继续保持适量运动和健康作息。";
+                speak("李大爷，您的身体指标很健康，真棒！");
+            }
+
+            resultDiv.className = `health-status ${statusClass}`;
+            resultDiv.innerHTML = `${statusText}<br><span style="font-size: 1rem; font-weight: normal; margin-top:10px; display:block;">${advice}</span>`;
+
+            // 更新图表最后一个柱子 (模拟)
+            const bars = document.querySelectorAll('.bar');
+            const lastBar = bars[bars.length - 1];
+            const heightPercent = Math.min(100, (high / 180) * 100);
+            lastBar.style.height = `${heightPercent}%`;
+            
+            if(statusClass.includes('bad')) lastBar.style.backgroundColor = 'var(--danger-color)';
+            else if(statusClass.includes('warn')) lastBar.style.backgroundColor = 'orange';
+            else lastBar.style.backgroundColor = 'var(--primary-color)';
+
+            showToast("数据已保存");
+        }
+
+        // ====================
+        // 功能 3: 文旅推送
+        // ====================
+
+        function renderTourism(filterType) {
+            const container = document.getElementById('tourism-list');
+            container.innerHTML = "";
+
+            const filtered = filterType === 'all' 
+                ? mockTourismData 
+                : mockTourismData.filter(item => item.type === filterType);
+
+            filtered.forEach(item => {
+                const card = document.createElement('div');
+                card.className = 'card tour-card';
+                card.innerHTML = `
+                    <img src="https://picsum.photos/seed/${item.id}/400/200" class="tour-img" alt="${item.title}">
+                    <div class="tour-info">
+                        <h3>${item.title}</h3>
+                        <div class="tour-tags">
+                            ${item.tags.map(t => `<span class="tag">${t}</span>`).join('')}
+                        </div>
+                        <div class="tour-desc">${item.desc}</div>
+                    </div>
+                    <button class="btn btn-large" onclick="goToNav('${item.title}')">🧭 一键导航去这里</button>
+                `;
+                container.appendChild(card);
+            });
+        }
+
+        function filterTourism(type, btn) {
+            // 更新按钮样式
+            document.querySelectorAll('.filter-chip').forEach(el => el.classList.remove('active'));
+            btn.classList.add('active');
+            renderTourism(type);
+        }
+
+        function goToNav(placeName) {
+            showToast(`已为您规划前往 ${placeName} 的路线`);
+            switchTab('nav');
+            // 模拟延迟更新导航界面
+            setTimeout(() => {
+                startNav(placeName, "已为您避开拥堵，前方直行进入主路。");
+            }, 500);
+        }
+
+        // ====================
+        // 功能 4: 智能导航
+        // ====================
+
+        function startNav(destName, instruction) {
+            document.getElementById('nav-text').textContent = `前往：${destName}`;
+            document.getElementById('nav-text').style.fontSize = "1.5rem";
+            
+            showToast(`正在为您导航至 ${destName}`);
+            
+            setTimeout(() => {
+                document.getElementById('nav-text').textContent = instruction;
+                document.getElementById('nav-text').style.fontSize = "2rem";
+                // 模拟语音播报
+                speak("开始导航。" + instruction);
+            }, 1500);
+        }
+
+        // ====================
+        // 通用设置功能
+        // ====================
+
+        function openSettings() {
+            document.getElementById('settings-modal').style.display = 'flex';
+        }
+
+        function closeSettings() {
+            document.getElementById('settings-modal').style.display = 'none';
+        }
+
+        function toggleFontSize() {
+            const isChecked = document.getElementById('setting-font').checked;
+            if (isChecked</script>
+			
+		
+</body></html>
